@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\ActivitylogServiceProvider;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use App\Http\Controllers\Controller;
 
 trait LogsActivity
 {
@@ -15,15 +16,19 @@ trait LogsActivity
 
     protected $enableLoggingModelsEvents = true;
 
-    protected static function bootLogsActivity()
+    public static function bootLogsActivity()
     {
+
         static::eventsToBeRecorded()->each(function ($eventName) {
+
             return static::$eventName(function (Model $model) use ($eventName) {
                 if (! $model->shouldLogEvent($eventName)) {
                     return;
                 }
 
-                $description = $model->getDescriptionForEvent($eventName);
+                $description = $model->getDescriptionForEvent($eventName, $model);
+
+                $entityName  =  $model->getEntityForEvent($model);
 
                 $logName = $model->getLogNameToUse($eventName);
 
@@ -33,7 +38,9 @@ trait LogsActivity
 
                 app(ActivityLogger::class)
                     ->useLog($logName)
+                  //  ->causedBy((new Controller)->getCauseUser())
                     ->performedOn($model)
+                    ->setEntity($entityName)
                     ->withProperties($model->attributeValuesToBeLogged($eventName))
                     ->log($description);
             });
@@ -59,15 +66,23 @@ trait LogsActivity
         return $this->morphMany(ActivitylogServiceProvider::determineActivityModel(), 'subject');
     }
 
-    public function getDescriptionForEvent(string $eventName): string
+    public function getDescriptionForEvent(string $eventName, $model): string
     {
+
         return $eventName;
+    }
+
+    public function getEntityForEvent($model): string
+    {
+        return $model;
     }
 
     public function getLogNameToUse(string $eventName = ''): string
     {
         return config('activitylog.default_log_name');
     }
+
+
 
     /*
      * Get the event names that should be recorded.
@@ -87,7 +102,6 @@ trait LogsActivity
         if (collect(class_uses_recursive(__CLASS__))->contains(SoftDeletes::class)) {
             $events->push('restored');
         }
-
         return $events;
     }
 

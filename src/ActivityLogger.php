@@ -8,6 +8,7 @@ use Spatie\Activitylog\Models\Activity;
 use Illuminate\Support\Traits\Macroable;
 use Illuminate\Contracts\Config\Repository;
 use Spatie\Activitylog\Exceptions\CouldNotLogActivity;
+use App\Http\Controllers\Controller;
 
 class ActivityLogger
 {
@@ -29,6 +30,8 @@ class ActivityLogger
 
     /** @var \Illuminate\Support\Collection */
     protected $properties;
+
+    protected $entityName;
 
     /** @var string */
     protected $authDriver;
@@ -96,6 +99,19 @@ class ActivityLogger
     }
 
     /**
+     * @param get entity
+     *
+     * @return $this
+     */
+    public function setEntity($entityName)
+    {
+        $this->entityName = $entityName;
+
+        return $this;
+    }
+
+
+    /**
      * @param string $key
      * @param mixed  $value
      *
@@ -139,6 +155,10 @@ class ActivityLogger
 
         if ($this->causedBy) {
             $activity->causer()->associate($this->causedBy);
+        }
+
+        if ($this->entityName) {
+            $activity->entityName = $this->entityName;
         }
 
         $activity->properties = $this->properties;
